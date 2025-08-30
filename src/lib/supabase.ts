@@ -21,6 +21,20 @@ export const hasSupabaseConfig = !!(
   supabaseAnonKey.length > 20
 );
 
+// Test Supabase connection
+export const testSupabaseConnection = async (): Promise<boolean> => {
+  if (!supabase) return false;
+  
+  try {
+    // Simple query to test connection
+    const { error } = await supabase.from('profiles').select('id').limit(1);
+    return !error;
+  } catch (error) {
+    console.error('Supabase connection test failed:', error);
+    return false;
+  }
+};
+
 console.log('✅ Supabase config valid:', hasSupabaseConfig);
 
 // Log more detailed info for debugging production issues
