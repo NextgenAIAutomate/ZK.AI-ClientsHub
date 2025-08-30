@@ -105,22 +105,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         console.log('🔄 Initializing auth...');
         
-        // Test Supabase connection first
-        console.log('🔗 Testing Supabase connection...');
-        const connectionOk = await testSupabaseConnection();
-        
-        if (!connectionOk) {
-          console.error('❌ Supabase connection failed');
-          if (mounted) {
-            setError('Unable to connect to Supabase. Please check your environment variables (VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY) and network connection.');
-            setLoading(false);
-            setInitialized(true);
-          }
-          return;
-        }
-        
-        console.log('✅ Supabase connection successful');
-        
         // Get initial session without timeout
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
