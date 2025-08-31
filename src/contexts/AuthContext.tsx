@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
-import { supabase, hasSupabaseConfig, Profile, testSupabaseConnection } from '../lib/supabase';
+import { supabase, hasSupabaseConfig, Profile } from '../lib/supabase';
 
 interface AuthContextType {
   user: User | null;
@@ -105,37 +105,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         console.log('🔄 Initializing auth...');
         
-        // Get initial session without timeout
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        // Get initial session with timeout
+        const sessionPromise = supabase.auth.getSession();
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Session timeout')), 10000)
+        );
+        
+        const { data: { session }, error: sessionError } = await Promise.race([
+          sessionPromise,
+          timeoutPromise
+        ]) as any;
         
         if (!mounted) return;
         
         if (sessionError) {
           console.error('❌ Error getting session:', sessionError);
-          if (mounted) {
-            setError(`Authentication error: ${sessionError.message}`);
-            clearAuthState();
-            setLoading(false);
-            setInitialized(true);
-          }
+          clearAuthState();
+          setLoading(false);
+          setInitialized(true);
           return;
         }
 
         console.log('📋 Initial session:', session ? 'Found' : 'None');
         
         if (session?.user) {
-          console.log('👤 User found, fetching fresh profile...');
           setSession(session);
           setUser(session.user);
           
-          // Always fetch fresh profile to ensure correct role routing
+          // Fetch profile
           const profileData = await fetchProfile(session.user.id);
           if (mounted) {
             setProfile(profileData);
-            console.log('✅ Profile loaded, role:', profileData?.role || 'No role');
           }
         } else {
-          console.log('👤 No active session found');
           clearAuthState();
         }
         
@@ -146,7 +148,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } catch (err) {
         console.error('💥 Auth initialization error:', err);
         if (mounted) {
-          setError(`Authentication initialization failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
           clearAuthState();
           setLoading(false);
           setInitialized(true);
